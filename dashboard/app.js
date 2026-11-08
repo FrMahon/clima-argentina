@@ -11,7 +11,41 @@ const state = {
   year: null,     // año elegido en la línea de tiempo
   preview: null,  // año bajo el cursor en las franjas (vista previa, no cambia `year`)
   timer: null,
+  stripesIntro: false, // animación de entrada de las franjas (solo el primer dibujo)
+  mapIntro: false,     // animación de entrada del mapa (solo cuando aparece por primera vez)
 };
+
+// --- Animaciones de entrada ----------------------------------------------------------------
+// El script del <head> pone `js-anim` solo si el sistema no pide reducir movimiento.
+
+const animating = () => document.documentElement.classList.contains("js-anim");
+
+// Numera los hijos de una lista para que entren uno después del otro (ver `.stagger` en el CSS).
+function indexChildren(parent) {
+  [...parent.children].forEach((child, i) => child.style.setProperty("--i", i));
+}
+
+function setupReveals() {
+  window.__revealReady = true;
+  if (!animating()) return;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const target = entry.target;
+        target.classList.add("is-in");
+        observer.unobserve(target);
+        if (target.classList.contains("map-col")) {
+          state.mapIntro = true;
+          renderMap(tokens()); // se redibuja con la animación de norte a sur
+          state.mapIntro = false;
+        }
+      }
+    },
+    { threshold: 0.15, rootMargin: "0px 0px -6% 0px" },
+  );
+  document.querySelectorAll(".reveal, .stagger").forEach((el) => observer.observe(el));
+}
 
 // --- Formato (es-AR) -----------------------------------------------------------------
 
@@ -182,6 +216,12 @@ function renderNationalStripes(T) {
     ],
   });
   linkToPreview(plot);
+  if (state.stripesIntro) {
+    // Cada franja entra 14 ms después de la anterior: el país se "pinta" de 1940 a hoy.
+    plot.classList.add("stripes-intro");
+    plot.querySelectorAll('g[aria-label="rect"] rect').forEach((r, i) => r.style.setProperty("--d", `${450 + i * 14}ms`));
+    state.stripesIntro = false;
+  }
   $("national-stripes").replaceChildren(plot);
 }
 
@@ -193,6 +233,7 @@ function renderPicker() {
       el("button", { type: "button", role: "radio", "aria-checked": String(key === state.metric), onclick: () => setMetric(key) }, m.label),
     ),
   );
+  indexChildren($("metric-picker"));
 }
 
 function setMetric(key) {
@@ -356,6 +397,16 @@ function renderMap(T) {
   // Hover en el mapa → resalta la fila de la lista (sin redibujar el mapa, para no perder el puntero).
   plot.addEventListener("input", () => highlightRow(plot.value?.id ?? null));
   $("map").replaceChildren(plot);
+  if (state.mapIntro) {
+    // Ciudades y nombres aparecen de norte a sur según su altura en el mapa.
+    plot.classList.add("map-intro");
+    const height = plot.getBoundingClientRect().height || 1;
+    const top = plot.getBoundingClientRect().top;
+    plot.querySelectorAll("circle, text").forEach((node) => {
+      const y = node.getBoundingClientRect().top - top;
+      node.style.setProperty("--d", `${300 + (y / height) * 1100}ms`);
+    });
+  }
 
   renderScale(T);
   const period = year === state.data.meta.last_year ? "los últimos 10 años" : `los 10 años hasta ${year}`;
@@ -432,6 +483,7 @@ function renderList(T) {
       );
     }),
   );
+  indexChildren($("city-list"));
 }
 
 function highlightRow(id) {
@@ -615,6 +667,7 @@ function renderFindings() {
   }
 
   $("findings").replaceChildren(...items.map(([lead, rest]) => el("li", {}, [el("strong", {}, lead), rest])));
+  indexChildren($("findings"));
 }
 
 // --- Tabla ---------------------------------------------------------------------------------------
@@ -691,6 +744,7 @@ async function init() {
   state.selected = [...data.warming].sort((a, b) => b.warming_c - a.warming_c)[0]?.city_id ?? null;
 
   applyHash();
+  state.stripesIntro = animating();
   renderOpening();
   renderPicker();
   setupViewToggle();
@@ -698,6 +752,7 @@ async function init() {
   renderFindings();
   renderTable();
   renderAll();
+  setupReveals();
 
   const fmtDate = (d) => d.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
   $("updated").textContent = ` Datos hasta el ${fmtDate(new Date(`${data.meta.data_through}T00:00:00`))}.`;
@@ -716,5 +771,6 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
+  document.documentElement.classList.remove("js-anim"); // que el mensaje de error se vea
   $("headline").textContent = "No se pudieron cargar los datos. Recargá la página para intentar de nuevo.";
 });
