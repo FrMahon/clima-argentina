@@ -1,0 +1,16 @@
+# Entorno
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Datos y artefactos generados (se reconstruyen con `clima run`)
+data/
+site/
+
+# dbt
+transform/target/
+transform/logs/
+transform/dbt_packages/
+transform/.user.yml
+logs/
