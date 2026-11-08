@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clima de Argentina</title>
+  <meta name="description" content="Cuánto cambió la temperatura en 13 ciudades de Argentina desde 1940, con datos del reanálisis ERA5.">
+  <meta property="og:title" content="¿Cuánto se calentó Argentina?">
+  <meta property="og:description" content="13 ciudades, de Salta a Ushuaia, desde 1940.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header class="opening">
+      <h1 id="headline">¿Cuánto se calentó Argentina?</h1>
+      <p class="dek" id="dek">Temperatura de 13 ciudades, de Salta a Ushuaia, desde 1940.</p>
+    </header>
+
+    <figure class="national">
+      <div id="national-stripes" class="stripes-wide" role="img" aria-label="Franjas de temperatura de Argentina, un año por franja"></div>
+      <figcaption>
+        <span class="ends"><span id="first-year">1940</span><span id="last-year">2025</span></span>
+        <span>Cada franja es un año. Azul, más frío que el promedio de 1961–1990; rojo, más cálido. Pasá el cursor por las franjas para ver ese año en el mapa.</span>
+      </figcaption>
+    </figure>
+
+    <section class="cities" aria-labelledby="cities-title">
+      <h2 id="cities-title">Ciudad por ciudad</h2>
+      <p class="lead" id="cities-lead">Elegí qué querés ver y tocá una ciudad en el mapa o en la lista.</p>
+
+      <div class="metric-picker" id="metric-picker" role="radiogroup" aria-label="Qué ver en el mapa"></div>
+
+      <div class="map-and-list">
+        <div class="map-col">
+          <div class="view-toggle" id="view-toggle" role="radiogroup" aria-label="Cómo mostrar el mapa">
+            <button type="button" role="radio" data-view="puntos" aria-checked="true">Puntos</button>
+            <button type="button" role="radio" data-view="calor" aria-checked="false">Mapa de calor</button>
+          </div>
+          <div id="map" class="map"></div>
+          <div class="scale" id="scale" aria-hidden="true"></div>
+          <div class="timeline">
+            <button type="button" class="play" id="play" aria-label="Reproducir la evolución desde 1949">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path id="play-icon" d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+            </button>
+            <input type="range" id="year" aria-label="Año">
+            <output id="year-out" for="year"></output>
+          </div>
+          <p class="note" id="map-note"></p>
+        </div>
+
+        <div class="list-col">
+          <ol class="city-list" id="city-list"></ol>
+        </div>
+      </div>
+
+      <article class="city-detail" id="city-detail" aria-live="polite"></article>
+    </section>
+
+    <section class="findings" aria-labelledby="findings-title">
+      <h2 id="findings-title">Lo que muestran los datos</h2>
+      <ul id="findings"></ul>
+      <details class="all-numbers">
+        <summary>Ver la tabla completa</summary>
+        <div class="table-wrap">
+          <table id="summary-table"><thead></thead><tbody></tbody></table>
+        </div>
+      </details>
+    </section>
+
+    <section class="about" aria-labelledby="about-title">
+      <h2 id="about-title">Sobre este proyecto</h2>
+      <p>
+        Los datos vienen del reanálisis ERA5, una reconstrucción del clima histórico que combina
+        observaciones con un modelo físico en una grilla de unos 25 km. No son mediciones de una
+        estación puntual, pero dan series completas y comparables desde 1940.
+      </p>
+      <p>
+        Un pipeline en Python descarga los datos de la API de Open-Meteo, los carga en DuckDB y los
+        transforma con dbt, con tests de calidad en cada paso. GitHub Actions lo corre dos veces por
+        semana y vuelve a publicar esta página.
+        <a href="https://github.com/FrMahon/clima-argentina">Ver el código en GitHub</a>.
+      </p>
+      <p class="small">
+        "Últimos 10 años" son los últimos diez años completos. Los promedios del país y de cada región
+        son promedios simples de las ciudades de la muestra.
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        Datos: <a href="https://open-meteo.com/en/docs/historical-weather-api">Open-Meteo</a>, reanálisis ERA5 de
+        ECMWF/Copernicus (CC BY 4.0). Mapa: <a href="https://www.naturalearthdata.com/">Natural Earth</a>.
+        <span id="updated"></span>
+      </p>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.17/dist/plot.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

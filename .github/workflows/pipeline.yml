@@ -1,0 +1,76 @@
+name: pipeline
+
+on:
+  schedule:
+    # Lunes y jueves 09:00 UTC (06:00 en Argentina). Dos veces por semana también evita que
+    # GitHub borre la caché de datos, que expira a los 7 días sin uso.
+    - cron: "0 9 * * 1,4"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["src/**", "transform/**", "dashboard/**", "tests/**", "pyproject.toml", ".github/workflows/**"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+
+  pipeline:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+
+      # Estado entre corridas: archivos crudos + warehouse DuckDB.
+      # Si la caché no existe (primera vez o expiró), el pipeline hace el backfill completo solo.
+      - name: Restaurar datos
+        uses: actions/cache/restore@v4
+        with:
+          path: data
+          key: clima-data-${{ github.run_id }}
+          restore-keys: clima-data-
+
+      - name: Extraer, cargar, transformar y exportar
+        run: clima run
+
+      - name: Guardar datos
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data
+          key: clima-data-${{ github.run_id }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: pipeline
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
