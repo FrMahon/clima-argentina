@@ -1,0 +1,43 @@
+name: clima_argentina
+version: "1.0.0"
+config-version: 2
+profile: clima_argentina
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  # Período de referencia climatológico estándar de la OMM.
+  baseline_start_year: 1961
+  baseline_end_year: 1990
+  # "Hoy" = promedio de los últimos N años completos.
+  recent_years: 10
+  # Umbrales de días extremos (°C).
+  hot_day_threshold_c: 30
+  tropical_night_threshold_c: 20
+  frost_threshold_c: 0
+
+seeds:
+  clima_argentina:
+    +schema: seeds
+    cities:
+      +column_types:
+        city_id: varchar
+        latitude: double
+        longitude: double
+
+models:
+  clima_argentina:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

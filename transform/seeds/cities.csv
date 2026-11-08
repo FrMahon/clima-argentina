@@ -1,0 +1,14 @@
+city_id,city_name,province,region,latitude,longitude
+salta,Salta,Salta,NOA,-24.7859,-65.4117
+tucuman,San Miguel de Tucumán,Tucumán,NOA,-26.8083,-65.2176
+posadas,Posadas,Misiones,NEA,-27.3671,-55.8961
+corrientes,Corrientes,Corrientes,NEA,-27.4692,-58.8306
+san_juan,San Juan,San Juan,Cuyo,-31.5375,-68.5364
+mendoza,Mendoza,Mendoza,Cuyo,-32.8895,-68.8458
+cordoba,Córdoba,Córdoba,Pampeana,-31.4201,-64.1888
+buenos_aires,Buenos Aires,CABA,Pampeana,-34.6037,-58.3816
+bahia_blanca,Bahía Blanca,Buenos Aires,Pampeana,-38.7183,-62.2663
+neuquen,Neuquén,Neuquén,Patagonia,-38.9516,-68.0591
+bariloche,San Carlos de Bariloche,Río Negro,Patagonia,-41.1335,-71.3103
+comodoro_rivadavia,Comodoro Rivadavia,Chubut,Patagonia,-45.8641,-67.4966
+ushuaia,Ushuaia,Tierra del Fuego,Patagonia,-54.8019,-68.3030

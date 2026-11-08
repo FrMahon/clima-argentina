@@ -1,0 +1,23 @@
+version: 2
+
+seeds:
+  - name: cities
+    description: >
+      Ciudades analizadas: al menos dos por región, de norte a sur. Las coordenadas son las del
+      centro de la ciudad; la API devuelve la celda de ERA5 (~25 km) más cercana.
+    columns:
+      - name: city_id
+        data_tests: [unique, not_null]
+      - name: region
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["NOA", "NEA", "Cuyo", "Pampeana", "Patagonia"]
+      - name: latitude
+        data_tests:
+          - value_between:
+              arguments: {min_value: -56, max_value: -21}
+      - name: longitude
+        data_tests:
+          - value_between:
+              arguments: {min_value: -74, max_value: -53}

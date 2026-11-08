@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: open_meteo
+    description: Datos diarios del reanálisis ERA5 vía Open-Meteo, cargados por `clima load`.
+    schema: raw
+    tables:
+      - name: open_meteo_daily
+        description: Una fila por ciudad y día, tal como la devolvió la API (upsert por ciudad+fecha).
+        config:
+          loaded_at_field: "cast(date as timestamp)"
+          freshness:
+            # ERA5 llega con ~5 días de demora y el pipeline corre una vez por semana.
+            warn_after: {count: 16, period: day}
+            error_after: {count: 30, period: day}
+        columns:
+          - name: city_id
+            data_tests: [not_null]
+          - name: date
+            data_tests: [not_null]

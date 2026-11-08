@@ -1,0 +1,128 @@
+version: 2
+
+models:
+  - name: dim_city
+    description: Ciudades con la celda de ERA5 que las representa y su cobertura temporal.
+    columns:
+      - name: city_id
+        data_tests: [unique, not_null]
+      - name: first_date
+        description: Primer día con datos. Debería ser 1940-01-01.
+        data_tests: [not_null]
+      - name: north_to_south_rank
+        data_tests: [unique, not_null]
+
+  - name: fct_daily_weather
+    description: Hechos diarios por ciudad (incremental por watermark de extracción).
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [city_id, weather_date]
+    columns:
+      - name: city_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: weather_date
+        data_tests: [not_null]
+      - name: season
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["verano", "otoño", "invierno", "primavera"]
+
+  - name: mart_city_annual
+    description: Una fila por ciudad y año completo, con anomalía vs. el período de referencia.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [city_id, year]
+    columns:
+      - name: anomaly_c
+        description: Temperatura media del año menos la media 1961-1990 de esa ciudad (°C).
+        data_tests:
+          - not_null
+          - value_between:
+              arguments: {min_value: -5, max_value: 5}
+      - name: anomaly_10y_rolling_c
+        description: Media móvil de 10 años de la anomalía (nula en los primeros 9 años).
+      - name: hot_days
+        data_tests:
+          - value_between:
+              arguments: {min_value: 0, max_value: 366}
+
+  - name: mart_city_warming
+    description: Resumen del calentamiento por ciudad. Una fila por ciudad.
+    columns:
+      - name: city_id
+        data_tests: [unique, not_null]
+      - name: baseline_temp_mean_c
+        data_tests: [not_null]
+      - name: recent_temp_mean_c
+        data_tests: [not_null]
+      - name: warming_c
+        description: Media de los últimos N años completos menos la media 1961-1990 (°C).
+        data_tests:
+          - not_null
+          - value_between:
+              arguments: {min_value: -3, max_value: 5}
+      - name: trend_c_per_decade_since_1980
+        description: Pendiente de la regresión lineal desde 1980, en °C por década.
+        data_tests: [not_null]
+
+  - name: mart_region_annual
+    description: Anomalía anual promedio por región y para el país (promedio simple de ciudades).
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [area, year]
+    columns:
+      - name: area_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["region", "country"]
+
+  - name: mart_city_indicator_annual
+    description: >
+      Formato largo para el dashboard: una fila por ciudad, indicador y año, con el valor,
+      su promedio 1961-1990, la diferencia y la media móvil de 10 años de la diferencia.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [city_id, indicator, year]
+    columns:
+      - name: indicator
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["temperatura", "verano", "invierno", "dias_calor", "heladas", "noches_tropicales"]
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: baseline_value
+        data_tests: [not_null]
+      - name: change
+        description: Valor del año menos el promedio 1961-1990 (°C o días, según el indicador).
+        data_tests: [not_null]
+
+  - name: mart_city_monthly_change
+    description: Cambio de la temperatura media mensual, período reciente vs. 1961-1990.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [city_id, month]
+    columns:
+      - name: month
+        data_tests:
+          - value_between:
+              arguments: {min_value: 1, max_value: 12}
+      - name: change_c
+        data_tests: [not_null]

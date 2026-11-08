@@ -1,0 +1,8 @@
+clima_argentina:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # El CLI (`clima`) define DUCKDB_PATH con la ruta absoluta del warehouse.
+      path: "{{ env_var('DUCKDB_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
