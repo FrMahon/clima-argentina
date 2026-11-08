@@ -30,6 +30,8 @@ Una sola página que se lee como una nota, de arriba hacia abajo:
 - **Mapa de calor:** un botón cambia los puntos por una capa que pinta todo el territorio. El valor
   de cada celda (grilla de 0,5°) se estima por distancia inversa al cuadrado (IDW) a partir de las
   ciudades, y la capa se recorta al contorno del país. La página aclara que es una estimación.
+  Qué celdas caen dentro del país se calcula una sola vez (`python -m clima.heatgrid` →
+  `dashboard/heat-grid.json`): hacerlo en el navegador congelaba la página ~2,5 s.
 - **Todo conectado:** el hover en el mapa resalta la ciudad en la lista y viceversa; al pasar el
   cursor por las franjas, el mapa muestra ese año.
 - **Lo que muestran los datos:** cinco hallazgos en una frase cada uno, calculados de los datos.

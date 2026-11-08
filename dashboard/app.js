@@ -248,35 +248,30 @@ function setMetric(key) {
 }
 
 // --- Mapa de calor: grilla + interpolación ---------------------------------------------------
-// Grilla de celdas de 0,5° sobre el país. El valor de cada celda se estima con IDW (distancia
-// inversa al cuadrado) a partir de las ciudades: es una estimación visual, no una medición.
+// Celdas de 0,5° sobre el país. Qué celdas caen dentro de Argentina se calcula una sola vez en
+// Python (`python -m clima.heatgrid` → heat-grid.json): hacerlo acá congelaba la página ~2,5 s.
+// El valor de cada celda se estima con IDW (distancia inversa al cuadrado) a partir de las
+// ciudades: es una estimación visual, no una medición.
 
-const CELL = 0.5;
 let heatGrid = null;
 
 function buildHeatGrid() {
-  const country = state.geo.features.find((f) => f.properties.kind === "country");
+  const { step, cells } = state.grid;
   const cities = state.data.cities;
-  const cells = [];
-  for (let lon = -74; lon < -53; lon += CELL) {
-    for (let lat = -56; lat < -21; lat += CELL) {
-      const corners = [[lon, lat], [lon + CELL, lat], [lon + CELL, lat + CELL], [lon, lat + CELL], [lon + CELL / 2, lat + CELL / 2]];
-      if (!corners.some((p) => d3.geoContains(country, p))) continue;
-      const center = [lon + CELL / 2, lat + CELL / 2];
-      // Pesos fijos por ciudad (1/d²): se calculan una vez y se reusan en cada año e indicador.
-      const weights = cities.map((c) => {
-        const d = d3.geoDistance(center, [c.longitude, c.latitude]);
-        return 1 / Math.max(d * d, 1e-8);
-      });
-      cells.push({
-        type: "Feature",
-        // Sentido horario: d3-geo interpreta el anillo antihorario como "todo el globo menos la celda".
-        geometry: { type: "Polygon", coordinates: [[[lon, lat], [lon, lat + CELL], [lon + CELL, lat + CELL], [lon + CELL, lat], [lon, lat]]] },
-        weights,
-      });
-    }
-  }
-  return cells;
+  return cells.map(([lon, lat]) => {
+    const center = [lon + step / 2, lat + step / 2];
+    // Pesos fijos por ciudad (1/d²): se calculan una vez y se reusan en cada año e indicador.
+    const weights = cities.map((c) => {
+      const d = d3.geoDistance(center, [c.longitude, c.latitude]);
+      return 1 / Math.max(d * d, 1e-8);
+    });
+    return {
+      type: "Feature",
+      // Sentido horario: d3-geo interpreta el anillo antihorario como "todo el globo menos la celda".
+      geometry: { type: "Polygon", coordinates: [[[lon, lat], [lon, lat + step], [lon + step, lat + step], [lon + step, lat], [lon, lat]]] },
+      weights,
+    };
+  });
 }
 
 function heatCells(values) {
@@ -733,12 +728,14 @@ function renderAll() {
 }
 
 async function init() {
-  const [data, geo] = await Promise.all([
+  const [data, geo, grid] = await Promise.all([
     fetch("data.json", { cache: "no-cache" }).then((r) => r.json()),
     fetch("argentina.geojson").then((r) => r.json()),
+    fetch("heat-grid.json").then((r) => r.json()),
   ]);
   state.data = data;
   state.geo = geo;
+  state.grid = grid;
   state.year = data.meta.last_year;
   // Arranca mostrando la ciudad que más se calentó.
   state.selected = [...data.warming].sort((a, b) => b.warming_c - a.warming_c)[0]?.city_id ?? null;
