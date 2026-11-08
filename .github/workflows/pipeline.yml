@@ -23,8 +23,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -35,8 +35,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -44,11 +44,13 @@ jobs:
 
       # Estado entre corridas: archivos crudos + warehouse DuckDB.
       # Si la caché no existe (primera vez o expiró), el pipeline hace el backfill completo solo.
+      # La clave incluye el número de intento: un "Re-run" conserva el run_id, y una caché de
+      # GitHub no se puede sobrescribir; sin el intento, el avance de un reintento se perdería.
       - name: Restaurar datos
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: data
-          key: clima-data-${{ github.run_id }}
+          key: clima-data-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: clima-data-
 
       - name: Extraer, cargar, transformar y exportar
@@ -56,12 +58,12 @@ jobs:
 
       - name: Guardar datos
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: data
-          key: clima-data-${{ github.run_id }}
+          key: clima-data-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -73,4 +75,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
