@@ -524,7 +524,8 @@ function renderDetail(T) {
 
   const series = citySeries(w.city_id).map((d) => ({ ...d, warmth: d.change * m.warm }));
   const mini = Plot.plot({
-    width: Math.min(760, widthOf("city-detail")),
+    // Se mide la columna, no la ficha: la ficha vacía está oculta y mediría 0.
+    width: Math.max(260, box.parentElement.clientWidth),
     height: 56,
     margin: 0,
     x: { axis: null },

@@ -267,10 +267,9 @@ h2 {
 
 /* --- Ficha de la ciudad ---------------------------------------------------------- */
 
-.city-detail {
-  margin-top: 56px;
-  max-width: 760px;
-}
+/* La ficha va en la columna derecha, al lado del mapa y arriba de la lista. */
+.city-detail { margin-bottom: 40px; }
+.city-detail:empty { display: none; }
 
 .city-detail h3 { margin: 0; font-size: 24px; line-height: 1.2; }
 .city-detail .where { margin: 2px 0 0; color: var(--ink-2); font-size: 16px; }
