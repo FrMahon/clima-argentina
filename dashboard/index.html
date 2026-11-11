@@ -43,12 +43,6 @@
 
       <div class="map-and-list">
         <div class="map-col reveal">
-          <div class="view-toggle" id="view-toggle" role="radiogroup" aria-label="Cómo mostrar el mapa">
-            <button type="button" role="radio" data-view="puntos" aria-checked="true">Puntos</button>
-            <button type="button" role="radio" data-view="calor" aria-checked="false">Mapa de calor</button>
-          </div>
-          <div id="map" class="map"></div>
-          <div class="scale" id="scale" aria-hidden="true"></div>
           <div class="timeline">
             <button type="button" class="play" id="play" aria-label="Reproducir la evolución desde 1949">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path id="play-icon" d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
@@ -56,7 +50,12 @@
             <input type="range" id="year" aria-label="Año">
             <output id="year-out" for="year"></output>
           </div>
-          <p class="note" id="map-note"></p>
+          <div class="view-toggle" id="view-toggle" role="radiogroup" aria-label="Cómo mostrar el mapa">
+            <button type="button" role="radio" data-view="puntos" aria-checked="true">Puntos</button>
+            <button type="button" role="radio" data-view="calor" aria-checked="false">Mapa de calor</button>
+          </div>
+          <div id="map" class="map"></div>
+          <div class="scale" id="scale" aria-hidden="true"></div>
         </div>
 
         <div class="list-col">

@@ -9,6 +9,7 @@ const state = {
   selected: null, // ciudad con la ficha abierta
   hovered: null,  // ciudad bajo el cursor (mapa o lista)
   year: null,     // año elegido en la línea de tiempo
+  frac: null,     // año con decimales mientras se reproduce la línea de tiempo (null = quieto)
   preview: null,  // año bajo el cursor en las franjas (vista previa, no cambia `year`)
   timer: null,
   stripesIntro: false, // animación de entrada de las franjas (solo el primer dibujo)
@@ -86,8 +87,14 @@ const fmtLevel = (m, v) => (m.kind === "temp" ? `${fmt(v)} °C` : fmt(v, 0));
 function changeAt(cityId, year, key = state.metric) {
   const s = state.data.indicators[key]?.[cityId];
   if (!s) return null;
-  const i = s.year.indexOf(year);
-  return i >= 0 ? s.rolling[i] : null;
+  // Año con decimales (mientras se reproduce): interpola entre los dos años vecinos para que el color fluya.
+  const lo = Math.floor(year);
+  const frac = year - lo;
+  const i = s.year.indexOf(lo);
+  const a = i >= 0 ? s.rolling[i] : null;
+  if (frac === 0 || a == null) return a;
+  const b = s.rolling[i + 1];
+  return b == null ? a : a + (b - a) * frac;
 }
 
 // Amplitud de la escala de color: fija en ±2 °C para temperaturas (igual que las franjas del país);
@@ -107,16 +114,13 @@ function domainFor(key) {
 function tokens() {
   const s = getComputedStyle(document.documentElement);
   const v = (n) => s.getPropertyValue(n).trim();
-  const dark = s.colorScheme === "dark";
   return {
     paper: v("--paper"),
     ink: v("--ink"),
     ink2: v("--ink-2"),
     rule: v("--rule"),
     land: v("--land"),
-    ramp: dark
-      ? ["#86b6ef", "#2a78d6", v("--mid"), "#e34948", "#f1a3a2"]
-      : ["#104281", "#6da7ec", v("--mid"), "#ee8f8c", "#8f1d22"],
+    ramp: ["#2f5fa8", "#7fa8e6", v("--mid"), "#f0924f", "#e2402a"],
   };
 }
 
@@ -141,7 +145,7 @@ function citySeries(cityId, key = state.metric) {
 
 const warmingOf = (id) => state.data.warming.find((w) => w.city_id === id);
 const hasData = (id) => Boolean(warmingOf(id));
-const shownYear = () => state.preview ?? state.year;
+const shownYear = () => state.preview ?? state.frac ?? state.year;
 
 // --- DOM ---------------------------------------------------------------------------------
 
@@ -423,12 +427,6 @@ function renderMap(T) {
   }
 
   renderScale(T);
-  const period = year === state.data.meta.last_year ? "los últimos 10 años" : `los 10 años hasta ${year}`;
-  $("map-note").textContent =
-    `Color: ${m.what}, promedio de ${period}, comparado con 1961–1990.` +
-    (state.view === "calor"
-      ? " Entre ciudades, el color es una estimación a partir de las más cercanas, no una medición de cada lugar."
-      : "");
 }
 
 function renderScale(T) {
@@ -498,6 +496,19 @@ function renderList(T) {
     }),
   );
   indexChildren($("city-list"));
+}
+
+// Durante la reproducción no se reconstruye la lista: solo se actualizan colores y valores en su lugar.
+function updateListValues(T) {
+  const m = metric();
+  const color = colorFn(T, domainFor(state.metric));
+  const year = shownYear();
+  document.querySelectorAll("#city-list li").forEach((li) => {
+    const v = changeAt(li.dataset.id, year);
+    if (v == null) return;
+    li.querySelector(".swatch").style.background = color(v * m.warm);
+    li.querySelector(".value").textContent = fmtChange(m, v);
+  });
 }
 
 function highlightRow(id) {
@@ -595,7 +606,7 @@ const PLAY = "M4 2.5v11l9-5.5z";
 const PAUSE = "M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z";
 
 function renderYearLabel() {
-  $("year-out").textContent = shownYear();
+  $("year-out").textContent = Math.round(shownYear());
 }
 
 function setupTimeline() {
@@ -604,11 +615,13 @@ function setupTimeline() {
   const first = meta.first_year + 9; // primera media de 10 años completa
   slider.min = first;
   slider.max = meta.last_year;
+  slider.step = "any"; // permite que la barra avance de forma continua al reproducir
   slider.value = state.year;
   renderYearLabel();
 
   const show = (year) => {
     state.year = year;
+    state.frac = null;
     state.preview = null;
     slider.value = year;
     renderYearLabel();
@@ -618,24 +631,46 @@ function setupTimeline() {
     renderList(T);
   };
 
+  // Reproducción fluida: el año avanza con decimales en cada cuadro (1 año cada 150 ms, como antes)
+  // y el mapa, la lista y la barra se interpolan entre un año y el siguiente.
+  const MS_PER_YEAR = 150;
+  let raf = null;
+  let lastT = 0;
+
   const stop = () => {
-    clearInterval(state.timer);
-    state.timer = null;
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    if (state.frac != null) show(Math.round(state.frac));
     $("play-icon").setAttribute("d", PLAY);
     $("play").setAttribute("aria-label", "Reproducir la evolución desde 1949");
   };
 
+  const frame = (t) => {
+    state.frac = Math.min(meta.last_year, state.frac + (t - lastT) / MS_PER_YEAR);
+    lastT = t;
+    slider.value = state.frac;
+    renderYearLabel();
+    const T = tokens();
+    renderMap(T);
+    updateListValues(T);
+    if (state.frac >= meta.last_year) return stop();
+    raf = requestAnimationFrame(frame);
+  };
+
   $("play").addEventListener("click", () => {
-    if (state.timer) return stop();
+    if (raf) return stop();
     if (state.year >= meta.last_year) show(first);
     $("play-icon").setAttribute("d", PAUSE);
     $("play").setAttribute("aria-label", "Pausar");
-    state.timer = setInterval(() => (state.year >= meta.last_year ? stop() : show(state.year + 1)), 150);
+    state.preview = null;
+    state.frac = state.year;
+    lastT = performance.now();
+    raf = requestAnimationFrame(frame);
   });
 
   slider.addEventListener("input", () => {
     stop();
-    show(Number(slider.value));
+    show(Math.round(Number(slider.value)));
   });
 }
 
@@ -716,7 +751,7 @@ function renderTable() {
   );
 }
 
-// --- Estado en la URL: #ver=heladas&ciudad=salta&anio=1980&tema=dark -----------------------------
+// --- Estado en la URL: #ver=heladas&ciudad=salta&anio=1980 -----------------------------
 
 function writeHash() {
   const p = new URLSearchParams();
@@ -724,16 +759,12 @@ function writeHash() {
   if (state.view === "calor") p.set("vista", "calor");
   if (state.selected) p.set("ciudad", state.selected);
   if (state.year !== state.data.meta.last_year) p.set("anio", state.year);
-  const theme = document.documentElement.dataset.theme;
-  if (theme) p.set("tema", theme);
   const hash = p.toString();
   history.replaceState(null, "", hash ? `#${hash}` : location.pathname + location.search);
 }
 
 function applyHash() {
   const p = new URLSearchParams(location.hash.slice(1));
-  const theme = p.get("tema");
-  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   const ver = p.get("ver");
   if (ver && METRICS[ver]) state.metric = ver;
   if (p.get("vista") === "calor") state.view = "calor";
@@ -790,7 +821,6 @@ async function init() {
     clearTimeout(t);
     t = setTimeout(renderAll, 120);
   }).observe(document.documentElement);
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
 }
 
 init().catch((err) => {
