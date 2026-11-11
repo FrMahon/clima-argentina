@@ -44,7 +44,9 @@ def cmd_transform() -> int:
     os.environ["DUCKDB_PATH"] = str(config.DB_PATH)
     dirs = ["--project-dir", str(config.DBT_DIR), "--profiles-dir", str(config.DBT_DIR)]
     runner = dbtRunner()
-    for args in (["source", "freshness"], ["build"]):
+    # full-refresh del seed: si la base cacheada tiene el esquema viejo de `cities`
+    # (6 columnas), dbt seed falla al leer el CSV nuevo (7 columnas).
+    for args in (["source", "freshness"], ["seed", "--full-refresh"], ["build"]):
         result = runner.invoke([*args, *dirs])
         if not result.success:
             log.error("dbt %s falló", " ".join(args))
