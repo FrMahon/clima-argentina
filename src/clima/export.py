@@ -40,7 +40,7 @@ def _columnar(rows: list[dict], key: str, fields: list[str]) -> dict[str, dict[s
 
 def build_dataset(con: duckdb.DuckDBPyConnection) -> dict:
     cities = _rows(con, """
-        select city_id as id, city_name as name, province, region, latitude, longitude,
+        select city_id as id, city_name as name, province, region, is_capital, latitude, longitude,
                grid_elevation_m, first_date, last_date, north_to_south_rank as rank
         from marts.dim_city order by north_to_south_rank
     """)

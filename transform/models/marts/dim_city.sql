@@ -26,6 +26,7 @@ select
     cities.city_name,
     cities.province,
     cities.region,
+    cities.is_capital,
     cities.latitude,
     cities.longitude,
     coverage.grid_latitude,

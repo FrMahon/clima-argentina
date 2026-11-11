@@ -27,6 +27,7 @@ seeds:
     cities:
       +column_types:
         city_id: varchar
+        is_capital: boolean
         latitude: double
         longitude: double
 
