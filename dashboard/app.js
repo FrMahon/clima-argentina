@@ -683,47 +683,70 @@ function renderFindings() {
     const vs = warming.map((w) => changeAt(w.city_id, meta.last_year, key)).filter((v) => v != null);
     return vs.length ? mean(vs) : null;
   };
+  // Cada tarjeta: qué se mide (eyebrow), el dato principal (big) y qué significa (text).
   const items = [];
 
   const byRegion = d3.rollups(warming, (ws) => mean(ws.map((w) => w.warming_c)), (w) => w.region).sort((a, b) => b[1] - a[1]);
   if (byRegion.length > 1) {
     const [top, bottom] = [byRegion[0], byRegion.at(-1)];
-    items.push([`${top[0]} es la región que más se calentó`, `: ${degC(top[1])}. La que menos, ${bottom[0]}: ${degC(bottom[1])}.`]);
+    items.push({
+      eyebrow: "La región que más se calentó",
+      big: degC(top[1]),
+      text: `${top[0]}, comparada con 1961–1990. La que menos: ${bottom[0]}, con ${degC(bottom[1])}.`,
+    });
   }
 
   const summer = avgChange("verano");
   const winter = avgChange("invierno");
   if (summer != null && winter != null) {
-    items.push(
-      winter > summer
-        ? ["El invierno se calentó más que el verano", `: ${degC(winter)} contra ${degC(summer)}, en promedio.`]
-        : ["El verano se calentó más que el invierno", `: ${degC(summer)} contra ${degC(winter)}, en promedio.`],
-    );
+    const [more, less, moreV, lessV] = winter > summer ? ["invierno", "verano", winter, summer] : ["verano", "invierno", summer, winter];
+    items.push({
+      eyebrow: "Verano e invierno",
+      big: degC(moreV),
+      text: `El ${more} se calentó más que el ${less} (${degC(lessV)}), en promedio.`,
+    });
   }
 
   const days = avg("warming_max_c");
   const nights = avg("warming_min_c");
-  items.push(
-    nights > days
-      ? ["Las noches se calentaron más que los días", `: las mínimas subieron ${degC(nights)} y las máximas ${degC(days)}.`]
-      : ["Los días se calentaron más que las noches", `: las máximas subieron ${degC(days)} y las mínimas ${degC(nights)}.`],
-  );
+  const nightsMore = nights > days;
+  items.push({
+    eyebrow: "Días y noches",
+    big: degC(nightsMore ? nights : days),
+    text: nightsMore
+      ? `Las noches se calentaron más que los días: las mínimas subieron ${degC(nights)} y las máximas ${degC(days)}.`
+      : `Los días se calentaron más que las noches: las máximas subieron ${degC(days)} y las mínimas ${degC(nights)}.`,
+  });
 
   const hot = [avg("baseline_hot_days"), avg("recent_hot_days")];
-  items.push([
-    `${hot[1] >= hot[0] ? "Hay más" : "Hay menos"} días de calor`,
-    `: en promedio cada ciudad pasó de ${fmt(hot[0], 0)} a ${fmt(hot[1], 0)} días por año con 30 °C o más.`,
-  ]);
+  items.push({
+    eyebrow: "Días de calor",
+    big: `${fmt(hot[0], 0)} → ${fmt(hot[1], 0)}`,
+    text: `${hot[1] >= hot[0] ? "Hay más" : "Hay menos"} días por año con 30 °C o más, en promedio por ciudad.`,
+  });
+
   const frost = [avg("baseline_frost_days"), avg("recent_frost_days")];
-  items.push([`${frost[1] <= frost[0] ? "Hay menos" : "Hay más"} heladas`, `: de ${fmt(frost[0], 0)} a ${fmt(frost[1], 0)} días por año en promedio.`]);
+  items.push({
+    eyebrow: "Heladas",
+    big: `${fmt(frost[0], 0)} → ${fmt(frost[1], 0)}`,
+    text: `${frost[1] <= frost[0] ? "Hay menos" : "Hay más"} días por año con temperatura bajo cero, en promedio por ciudad.`,
+  });
 
   const nat = nationalSeries();
   if (nat.length) {
     const warmest = nat.reduce((a, b) => (b.anomaly > a.anomaly ? b : a));
-    items.push([`El año más cálido fue ${warmest.year}`, `, con ${degC(warmest.anomaly)} sobre el promedio de 1961–1990.`]);
+    items.push({
+      eyebrow: "El año más cálido",
+      big: String(warmest.year),
+      text: `${degC(warmest.anomaly)} sobre el promedio de 1961–1990, en todo el país.`,
+    });
   }
 
-  $("findings").replaceChildren(...items.map(([lead, rest]) => el("li", {}, [el("strong", {}, lead), rest])));
+  $("findings").replaceChildren(
+    ...items.map((it) =>
+      el("li", {}, [el("span", { class: "f-eyebrow" }, it.eyebrow), el("strong", { class: "f-big" }, it.big), el("p", { class: "f-text" }, it.text)]),
+    ),
+  );
   indexChildren($("findings"));
 }
 
