@@ -1,6 +1,6 @@
 # ¿Cuánto se calentó Argentina?
 
-Pipeline ELT que descarga 85+ años de temperatura diaria de 13 ciudades argentinas, de Salta a
+Pipeline ELT que descarga 85+ años de temperatura diaria de 27 ciudades argentinas (las 24 capitales y tres más), de Jujuy a
 Ushuaia, la modela con **dbt** sobre **DuckDB** y publica un dashboard estático que se actualiza
 solo con **GitHub Actions**.
 
@@ -22,7 +22,7 @@ Una sola página que se lee como una nota, de arriba hacia abajo:
 
 - **La respuesta primero:** un titular que dice cuánto se calentó el país, y debajo las
   *franjas de calentamiento* de 1940 a hoy (una franja por año, azul más frío y rojo más cálido).
-- **Ciudad por ciudad:** mapa y lista de las 13 ciudades, con un selector de qué ver:
+- **Ciudad por ciudad:** mapa y lista de las 27 ciudades, con un selector de qué ver:
   *Temperatura, Verano, Invierno, Días de calor, Heladas, Noches cálidas*. Mapa, lista, escala y
   ficha cambian juntos, y el rojo siempre significa "cambio hacia más calor" (en Heladas, rojo es
   *menos* heladas). Al tocar una ciudad se abre su ficha con los seis indicadores y sus franjas.
@@ -166,8 +166,9 @@ el pipeline publica igual con los datos que ya tiene en vez de fallar.
 
 - ERA5 es un reanálisis en una grilla de ~25 km, no el dato de una estación. En zonas de montaña
   o costa la celda puede diferir del valor local.
-- El promedio "nacional" es un promedio simple de 13 ciudades (cada una pesa igual), no un promedio
-  areal del territorio.
+- El promedio "nacional" es un promedio simple de 27 ciudades (cada una pesa igual), no un promedio
+  areal del territorio. Como hay una capital por provincia, las provincias chicas y densas del
+  centro y el litoral pesan más que su superficie, y la Patagonia pesa menos.
 
 ## Stack
 

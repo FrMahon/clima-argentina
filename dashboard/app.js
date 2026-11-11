@@ -61,7 +61,7 @@ const degC = (v, d = 1) => `${signed(v, d)} °C`;
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 const isNarrow = () => window.matchMedia("(max-width: 520px)").matches;
-const NAMES = { tucuman: "Tucumán", bariloche: "Bariloche" };
+const NAMES = { tucuman: "Tucumán", bariloche: "Bariloche", catamarca: "Catamarca", jujuy: "Jujuy" };
 const NARROW_NAMES = { comodoro_rivadavia: "C. Rivadavia" };
 const shortName = (id, full) => (isNarrow() && NARROW_NAMES[id]) || NAMES[id] || full;
 
@@ -174,8 +174,15 @@ function renderOpening() {
     Math.abs(avg) < 0.05
       ? "En la última década, Argentina tuvo casi la misma temperatura que entre 1961 y 1990."
       : `En la última década, Argentina estuvo ${fmt(Math.abs(avg))} °C más ${avg > 0 ? "cálida" : "fría"} que entre 1961 y 1990.`;
+  const withData = new Set(warming.map((w) => w.city_id));
+  const capitals = state.data.cities.filter((c) => c.is_capital && withData.has(c.id)).length;
+  const others = warming.length - capitals;
+  const sample =
+    capitals === 24
+      ? `las 24 capitales del país${others ? ` y otras ${others} ciudades` : ""}`
+      : `${warming.length} ciudades`;
   $("dek").textContent =
-    `Promedio de ${warming.length} ciudades, de Salta a Ushuaia, entre ${r0} y ${r1}. ` +
+    `Promedio de ${sample}, de norte a sur, entre ${r0} y ${r1}. ` +
     `Abajo, la temperatura de cada año desde ${meta.first_year}.`;
   $("first-year").textContent = meta.first_year;
   $("last-year").textContent = meta.last_year;
@@ -304,9 +311,20 @@ function setupViewToggle() {
 
 // --- Mapa --------------------------------------------------------------------------------
 
+// Con 27 ciudades no entran todos los nombres sin pisarse (el NOA y el Litoral están muy juntos).
+// Siempre se nombran estas, bien repartidas por el país; el resto aparece al elegir o señalar una
+// ciudad, y todas están en la lista de al lado.
+const ALWAYS_LABELED = new Set([
+  "salta", "posadas", "cordoba", "mendoza", "buenos_aires", "santa_rosa",
+  "neuquen", "viedma", "comodoro_rivadavia", "rio_gallegos", "ushuaia",
+]);
+
 // Dónde va el nombre de cada ciudad (por defecto a la derecha), para que no se pisen ni se salgan.
-const LABEL_SIDE = { posadas: "top", corrientes: "left", buenos_aires: "left" };
-const OFFSETS = { right: [13, 0, "start"], left: [-13, 0, "end"], top: [0, -16, "middle"] };
+const LABEL_SIDE = {
+  posadas: "top", corrientes: "left", resistencia: "left", buenos_aires: "left",
+  santa_fe: "left", catamarca: "left", la_rioja: "left", formosa: "top",
+};
+const OFFSETS = { right: [12, 0, "start"], left: [-12, 0, "end"], top: [0, -14, "middle"] };
 
 function renderMap(T) {
   const m = metric();
@@ -327,8 +345,9 @@ function renderMap(T) {
     };
   });
   const isOn = (d) => d.id === state.selected || d.id === state.hovered;
+  const labeled = points.filter((d) => ALWAYS_LABELED.has(d.id) || isOn(d));
   const label = (side) =>
-    Plot.text(points.filter((d) => (LABEL_SIDE[d.id] ?? "right") === side), {
+    Plot.text(labeled.filter((d) => (LABEL_SIDE[d.id] ?? "right") === side), {
       x: "lon",
       y: "lat",
       text: "name",
@@ -368,8 +387,8 @@ function renderMap(T) {
             Plot.geo(country, { fill: T.land }),
             Plot.geo(provinces, { fill: T.land, stroke: T.paper, strokeWidth: 1 }),
             // Aro de contraste: un valor cercano a cero es gris y se perdería sobre la tierra.
-            Plot.dot(points, { x: "lon", y: "lat", r: (d) => (isOn(d) ? 12 : 9), fill: (d) => (isOn(d) ? T.ink : T.ink2) }),
-            Plot.dot(points, { x: "lon", y: "lat", r: (d) => (isOn(d) ? 10 : 7.5), fill: "warmth", stroke: T.paper, strokeWidth: 1.5 }),
+            Plot.dot(points, { x: "lon", y: "lat", r: (d) => (isOn(d) ? 11 : 7.5), fill: (d) => (isOn(d) ? T.ink : T.ink2) }),
+            Plot.dot(points, { x: "lon", y: "lat", r: (d) => (isOn(d) ? 9 : 6), fill: "warmth", stroke: T.paper, strokeWidth: 1.5 }),
           ]),
       label("right"),
       label("left"),
@@ -470,7 +489,7 @@ function renderList(T) {
             },
             [
               el("span", { class: "swatch", style: { background: v == null ? T.rule : color(v * m.warm) } }),
-              el("span", {}, [el("span", { class: "name" }, c.name), el("span", { class: "region" }, c.region)]),
+              el("span", {}, [el("span", { class: "name" }, shortName(c.id, c.name)), el("span", { class: "region" }, c.region)]),
               el("span", { class: "value" }, available && v != null ? fmtChange(m, v) : "sin datos"),
             ],
           ),
@@ -545,12 +564,19 @@ function renderDetail(T) {
 
   box.replaceChildren(
     el("h3", {}, w.city_name),
-    el("p", { class: "where" }, `${w.province}, región ${w.region}. Promedios por año, 1961–1990 → ${r0}–${r1}.`),
+    el("p", { class: "where" }, `${whereText(w)}. Promedios por año, 1961–1990 → ${r0}–${r1}.`),
     el("ul", { class: "indicators" }, rows),
     el("p", { class: "mini-title" }, `${m.label}, año por año desde ${series[0]?.year ?? meta.first_year}`),
     el("div", { class: "mini", role: "img", "aria-label": `Franjas de ${m.label.toLowerCase()} de ${w.city_name}` }, mini),
     el("div", { class: "mini-ends" }, [el("span", {}, series[0]?.year), el("span", {}, series.at(-1)?.year)]),
   );
+}
+
+// "Capital de Jujuy, región NOA" / "Río Negro, región Patagonia" para las que no son capitales.
+function whereText(w) {
+  const city = state.data.cities.find((c) => c.id === w.city_id);
+  if (w.province === "CABA") return "Capital del país, región Pampeana";
+  return city?.is_capital ? `Capital de ${w.province}, región ${w.region}` : `${w.province}, región ${w.region}`;
 }
 
 function select(id) {
