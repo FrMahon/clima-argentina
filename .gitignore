@@ -3,6 +3,7 @@
 __pycache__/
 *.egg-info/
 .pytest_cache/
+uv.lock
 
 # Datos y artefactos generados (se reconstruyen con `clima run`)
 data/
