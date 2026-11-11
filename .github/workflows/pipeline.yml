@@ -2,9 +2,11 @@ name: pipeline
 
 on:
   schedule:
-    # Lunes y jueves 09:00 UTC (06:00 en Argentina). Dos veces por semana también evita que
-    # GitHub borre la caché de datos, que expira a los 7 días sin uso.
-    - cron: "0 9 * * 1,4"
+    # Lunes 09:00 UTC (06:00 en Argentina): corrida completa, la única que consulta la API.
+    - cron: "0 9 * * 1"
+    # Jueves 09:00 UTC: solo renueva la caché de datos (GitHub la borra a los 7 días sin uso,
+    # y con una sola corrida semanal justa un atraso la dejaría expirar). No toca la API.
+    - cron: "0 9 * * 4"
   workflow_dispatch:
   push:
     branches: [main]
@@ -20,7 +22,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Jueves: restaurar la caché cuenta como uso y reinicia su plazo de expiración.
+  keepalive:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 9 * * 4'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Renovar caché de datos
+        uses: actions/cache/restore@v6
+        with:
+          path: data
+          key: clima-data-keepalive
+          restore-keys: clima-data-
+
   test:
+    if: github.event_name != 'schedule' || github.event.schedule == '0 9 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
