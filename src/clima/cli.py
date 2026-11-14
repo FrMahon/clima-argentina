@@ -60,7 +60,8 @@ def cmd_export() -> int:
 
 
 def cmd_run() -> int:
-    code = cmd_extract()
+    # Los push (cambios de código/dashboard) republican con los datos cacheados, sin gastar cuota de la API.
+    code = 0 if os.environ.get("CLIMA_SKIP_EXTRACT") else cmd_extract()
     cmd_load()  # se carga lo que haya llegado, aunque la extracción se haya cortado
     if code != 0:
         with warehouse.connect() as con:

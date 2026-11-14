@@ -70,6 +70,9 @@ jobs:
 
       - name: Extraer, cargar, transformar y exportar
         run: clima run
+        env:
+          # Un push solo republica con los datos cacheados; la API se consulta los lunes y a mano.
+          CLIMA_SKIP_EXTRACT: ${{ github.event_name == 'push' && '1' || '' }}
 
       - name: Guardar datos
         if: always()
